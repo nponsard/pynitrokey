@@ -11,6 +11,7 @@ import contextlib
 import datetime
 import mimetypes
 import os.path
+from typing import List, Optional, Tuple
 
 import click
 import requests
@@ -81,7 +82,14 @@ def print_table(headers, data):
     help="Whether to verify the TLS certificate of the NetHSM",
 )
 @click.pass_context
-def nethsm(ctx, host, version, username, password, verify_tls):
+def nethsm(
+    ctx: click.Context,
+    host: str,
+    version: str,
+    username: str,
+    password: str,
+    verify_tls: bool,
+):
     """Interact with NetHSM devices, see subcommands."""
     ctx.ensure_object(dict)
 
@@ -96,7 +104,7 @@ def nethsm(ctx, host, version, username, password, verify_tls):
 
 
 @contextlib.contextmanager
-def connect(ctx, require_auth=True):
+def connect(ctx: click.Context, require_auth: bool = True):
     host = ctx.obj["NETHSM_HOST"]
     version = ctx.obj["NETHSM_VERSION"]
     username = None
@@ -121,7 +129,7 @@ def connect(ctx, require_auth=True):
         try:
             yield nethsm
         except pynitrokey.nethsm.NetHSMError as e:
-            raise click.ClickException(e)
+            raise click.ClickException(str(e))
         except urllib3.exceptions.MaxRetryError as e:
             if isinstance(e.reason, urllib3.exceptions.SSLError):
                 raise click.ClickException(
@@ -138,7 +146,7 @@ def connect(ctx, require_auth=True):
 @nethsm.command()
 @click.argument("passphrase", required=False)
 @click.pass_context
-def unlock(ctx, passphrase):
+def unlock(ctx: click.Context, passphrase: str):
     """Bring a locked NetHSM into operational state."""
     with connect(ctx, require_auth=False) as nethsm:
         if not passphrase:
@@ -151,7 +159,7 @@ def unlock(ctx, passphrase):
 
 @nethsm.command()
 @click.pass_context
-def lock(ctx):
+def lock(ctx: click.Context):
     """Bring an operational NetHSM into locked state.
 
     This command requires authentication as a user with the Administrator
@@ -185,7 +193,12 @@ def lock(ctx):
     help="The system time to set (default: the time of this system)",
 )
 @click.pass_context
-def provision(ctx, unlock_passphrase, admin_passphrase, system_time):
+def provision(
+    ctx: click.Context,
+    unlock_passphrase: str,
+    admin_passphrase: str,
+    system_time: datetime.datetime,
+):
     """Initial provisioning of a NetHSM.
 
     If the unlock or admin passphrases are not set, they have to be entered
@@ -205,7 +218,7 @@ def provision(ctx, unlock_passphrase, admin_passphrase, system_time):
     help="Also query the real name and role of the user",
 )
 @click.pass_context
-def list_users(ctx, details):
+def list_users(ctx: click.Context, details: bool):
     """List all users on the NetHSM.
 
     This command requires authentication as a user with the Administrator
@@ -232,7 +245,7 @@ def list_users(ctx, details):
 @nethsm.command()
 @click.argument("user-id")
 @click.pass_context
-def get_user(ctx, user_id):
+def get_user(ctx: click.Context, user_id: str):
     """Query the real name and role for a user ID on the NetHSM.
 
     This command requires authentication as a user with the Administrator or
@@ -259,7 +272,9 @@ def get_user(ctx, user_id):
 )
 @click.option("-u", "--user-id", help="The user ID of the new user")
 @click.pass_context
-def add_user(ctx, real_name, role, passphrase, user_id):
+def add_user(
+    ctx: click.Context, real_name: str, role: str, passphrase: str, user_id: str
+):
     """Create a new user on the NetHSM.
 
     If the real name, role or passphrase are not specified, they have to be
@@ -297,7 +312,7 @@ def delete_user(ctx, user_id):
     help="The new passphrase of the user",
 )
 @click.pass_context
-def set_passphrase(ctx, user_id, passphrase):
+def set_passphrase(ctx: click.Context, user_id: str, passphrase: str):
     """Set the passphrase for the user with the given ID (or the current user).
 
     This command requires authentication as a user with the Administrator or
@@ -313,7 +328,7 @@ def set_passphrase(ctx, user_id, passphrase):
 @nethsm.command()
 @click.argument("user-id")
 @click.pass_context
-def list_operator_tags(ctx, user_id):
+def list_operator_tags(ctx: click.Context, user_id: str):
     """List the tags for an operator user ID on the NetHSM.
 
     This command requires authentication as a user with the Administrator role."""
@@ -331,7 +346,7 @@ def list_operator_tags(ctx, user_id):
 @click.argument("user-id")
 @click.argument("tag")
 @click.pass_context
-def add_operator_tag(ctx, user_id, tag):
+def add_operator_tag(ctx: click.Context, user_id: str, tag: str):
     """Add a tag for an operator user on the NetHSM.
 
     This command requires authentication as a user with the Administrator
@@ -345,7 +360,7 @@ def add_operator_tag(ctx, user_id, tag):
 @click.argument("user-id")
 @click.argument("tag")
 @click.pass_context
-def delete_operator_tag(ctx, user_id, tag):
+def delete_operator_tag(ctx: click.Context, user_id: str, tag: str):
     """Delete a tag for an operator user on the NetHSM.
 
     This command requires authentication as a user with the Administrator
@@ -359,7 +374,7 @@ def delete_operator_tag(ctx, user_id, tag):
 @click.argument("key_id")
 @click.argument("tag")
 @click.pass_context
-def add_key_tag(ctx, key_id, tag):
+def add_key_tag(ctx: click.Context, key_id: str, tag: str):
     """Add a tag for a key on the NetHSM.
 
     This command requires authentication as a user with the Administrator
@@ -373,7 +388,7 @@ def add_key_tag(ctx, key_id, tag):
 @click.argument("key_id")
 @click.argument("tag")
 @click.pass_context
-def delete_key_tag(ctx, key_id, tag):
+def delete_key_tag(ctx: click.Context, key_id: str, tag: str):
     """Delete a tag for a key on the NetHSM.
 
     This command requires authentication as a user with the Administrator
@@ -385,7 +400,7 @@ def delete_key_tag(ctx, key_id, tag):
 
 @nethsm.command()
 @click.pass_context
-def info(ctx):
+def info(ctx: click.Context):
     """Query the vendor and product information for a NetHSM."""
     with connect(ctx, require_auth=False) as nethsm:
         (vendor, product) = nethsm.get_info()
@@ -396,7 +411,7 @@ def info(ctx):
 
 @nethsm.command()
 @click.pass_context
-def state(ctx):
+def state(ctx: click.Context):
     """Query the state of a NetHSM."""
     with connect(ctx, require_auth=False) as nethsm:
         state = nethsm.get_state()
@@ -406,7 +421,7 @@ def state(ctx):
 @nethsm.command()
 @click.argument("length", type=int)
 @click.pass_context
-def random(ctx, length):
+def random(ctx: click.Context, length: int):
     """Retrieve random bytes from the NetHSM as a Base64 string.
 
     This command requires authentication as a user with the Operator role."""
@@ -416,7 +431,7 @@ def random(ctx, length):
 
 @nethsm.command()
 @click.pass_context
-def metrics(ctx):
+def metrics(ctx: click.Context):
     """Query the metrics of a NetHSM.
 
     This command requires authentication as a user with the Metrics role."""
@@ -439,7 +454,7 @@ def metrics(ctx):
     help="Filter keys by tags for respective user",
 )
 @click.pass_context
-def list_keys(ctx, details, filter):
+def list_keys(ctx: click.Context, details: bool, filter: str):
     """List all keys on the NetHSM.
 
     This command requires authentication as a user with the Administrator or
@@ -475,7 +490,7 @@ def list_keys(ctx, details, filter):
 @click.argument("key_id")
 @click.option("--public-key", is_flag=True, help="Query the public key as a PEM file")
 @click.pass_context
-def get_key(ctx, key_id, public_key):
+def get_key(ctx: click.Context, key_id: str, public_key: bool):
     """Get information about a key on the NetHSM.
 
     This command requires authentication as a user with the Administrator or
@@ -504,7 +519,7 @@ def get_key(ctx, key_id, public_key):
 @nethsm.command()
 @click.argument("key-id")
 @click.pass_context
-def delete_key(ctx, key_id):
+def delete_key(ctx: click.Context, key_id: str):
     """Delete the key pair with the given key ID on the NetHSM.
 
     This command requires authentication as a user with the Administrator
@@ -514,7 +529,7 @@ def delete_key(ctx, key_id):
         print(f"Key {key_id} deleted on NetHSM {nethsm.host}")
 
 
-def prompt_mechanisms(type):
+def prompt_mechanisms(type: str):
     # We assume that key type X corresponds to the mechanisms starting with X.
     # This is no longer true for curves, so we have to adapt the type
     if type == pynitrokey.nethsm.KeyType.CURVE25519.value:
@@ -541,7 +556,7 @@ def prompt_mechanisms(type):
     )
 
     mechanism_type = click.Choice(available_mechanisms, case_sensitive=False)
-    mechanisms = []
+    mechanisms: List[pynitrokey.nethsm.KeyMechanism] = []
     cont = True
     while cont:
         default = None
@@ -616,7 +631,15 @@ def prompt_mechanisms(type):
 )
 @click.pass_context
 def add_key(
-    ctx, type, mechanisms, tags, prime_p, prime_q, public_exponent, data, key_id
+    ctx: click.Context,
+    type: str,
+    mechanisms_input: Tuple[str, ...],
+    tags: Tuple[str, ...],
+    prime_p: Optional[str],
+    prime_q: Optional[str],
+    public_exponent: Optional[str],
+    data: Optional[str],
+    key_id: Optional[str],
 ):
     """Add a key pair on the NetHSM.
 
@@ -624,7 +647,7 @@ def add_key(
 
     This command requires authentication as a user with the Administrator
     role."""
-    mechanisms = list(mechanisms) or prompt_mechanisms(type)
+    mechanisms = list(mechanisms_input) or prompt_mechanisms(type)
 
     if type == "RSA":
         if data:
@@ -691,12 +714,18 @@ def add_key(
     help="The ID of the generated key",
 )
 @click.pass_context
-def generate_key(ctx, type, mechanisms, length, key_id):
+def generate_key(
+    ctx: click.Context,
+    type: str,
+    mechanisms_input: Tuple[str, ...],
+    length: int,
+    key_id: Optional[str],
+):
     """Generate a key pair on the NetHSM.
 
     This command requires authentication as a user with the Administrator
     role."""
-    mechanisms = list(mechanisms) or prompt_mechanisms(type)
+    mechanisms = list(mechanisms_input) or prompt_mechanisms(type)
     with connect(ctx) as nethsm:
         key_id = nethsm.generate_key(type, mechanisms, length, key_id)
         print(f"Key {key_id} generated on NetHSM {nethsm.host}")
@@ -712,7 +741,7 @@ def generate_key(ctx, type, mechanisms, length, key_id):
 @click.option("--public-key", is_flag=True, help="Query the public key")
 @click.option("--certificate", is_flag=True, help="Query the certificate")
 @click.pass_context
-def get_config(ctx, **kwargs):
+def get_config(ctx: click.Context, **kwargs):
     """Query the configuration of a NetHSM.
 
     Only the configuration items selected with the corresponding option are
@@ -769,7 +798,7 @@ def get_config(ctx, **kwargs):
     help="The new backup passphrase",
 )
 @click.pass_context
-def set_backup_passphrase(ctx, passphrase):
+def set_backup_passphrase(ctx: click.Context, passphrase: str):
     """Set the backup passphrase of a NetHSM.
 
     This command requires authentication as a user with the Administrator
@@ -789,7 +818,7 @@ def set_backup_passphrase(ctx, passphrase):
     help="The new unlock passphrase",
 )
 @click.pass_context
-def set_unlock_passphrase(ctx, passphrase):
+def set_unlock_passphrase(ctx: click.Context, passphrase: str):
     """Set the unlock passphrase of a NetHSM.
 
     This command requires authentication as a user with the Administrator
@@ -821,7 +850,7 @@ def set_unlock_passphrase(ctx, passphrase):
     required=True,
 )
 @click.pass_context
-def set_logging_config(ctx, ip_address, port, log_level):
+def set_logging_config(ctx: click.Context, ip_address: str, port: int, log_level: str):
     """Set the logging configuration of a NetHSM.
 
     This command requires authentication as a user with the Administrator
@@ -851,7 +880,7 @@ def set_logging_config(ctx, ip_address, port, log_level):
     required=True,
 )
 @click.pass_context
-def set_network_config(ctx, ip_address, netmask, gateway):
+def set_network_config(ctx: click.Context, ip_address: str, netmask: str, gateway: str):
     """Set the network configuration of a NetHSM.
 
     This command requires authentication as a user with the Administrator
@@ -868,7 +897,7 @@ def set_network_config(ctx, ip_address, netmask, gateway):
     required=False,
 )
 @click.pass_context
-def set_time(ctx, time):
+def set_time(ctx: click.Context, time: datetime.datetime):
     """Set the system time of a NetHSM.
 
     If the time is not given as an argument, the system time of this system is used.
@@ -888,7 +917,7 @@ def set_time(ctx, time):
     type=UNATTENDED_BOOT_STATUS_TYPE,
 )
 @click.pass_context
-def set_unattended_boot(ctx, status):
+def set_unattended_boot(ctx: click.Context, status: str):
     """Set the unattended boot configuration of a NetHSM.
 
     This command requires authentication as a user with the Administrator
@@ -898,7 +927,7 @@ def set_unattended_boot(ctx, status):
         print(f"Updated the unattended boot configuration for NetHSM {nethsm.host}")
 
 
-def get_api_or_key_id(api, key_id):
+def get_api_or_key_id(api: bool, key_id: Optional[str]):
     """Helper method for operations that can be executed either for the API
     certificate or for the certificate stored for a key."""
     if api and key_id:
@@ -933,7 +962,13 @@ def get_api_or_key_id(api, key_id):
 )
 @click.argument("filename")
 @click.pass_context
-def set_certificate(ctx, api, key_id, mime_type, filename):
+def set_certificate(
+    ctx: click.Context,
+    api: bool,
+    key_id: Optional[str],
+    mime_type_input: str,
+    filename: str,
+):
     """Set a certificate on the NetHSM.
 
     If the --api option is set, the certificate used for the NetHSM TLS interface
@@ -946,7 +981,7 @@ def set_certificate(ctx, api, key_id, mime_type, filename):
     with connect(ctx) as nethsm:
         with open(filename, "rb") as f:
             if key_id:
-                if not mime_type:
+                if not mime_type_input:
                     (mime_type, _) = mimetypes.guess_type(filename)
                 if not mime_type:
                     raise click.ClickException(
@@ -963,7 +998,7 @@ def set_certificate(ctx, api, key_id, mime_type, filename):
                     f"Updated the certificate for key {key_id} on NetHSM {nethsm.host}"
                 )
             else:
-                if mime_type:
+                if mime_type_input:
                     raise click.ClickException("--mime-type cannot be used with --api")
                 nethsm.set_certificate(f)
                 print(f"Updated the API certificate for NetHSM {nethsm.host}")
@@ -975,7 +1010,7 @@ def set_certificate(ctx, api, key_id, mime_type, filename):
 )
 @click.option("-k", "--key-id", help="The ID of the key to get the certificate for")
 @click.pass_context
-def get_certificate(ctx, api, key_id):
+def get_certificate(ctx: click.Context, api: bool, key_id: Optional[str]):
     """Get a certificate from the NetHSM.
 
     If the --api option is set, the certificate used for the NetHSM TLS interface
@@ -1002,7 +1037,7 @@ def get_certificate(ctx, api, key_id):
     help="The ID of the key to delete the certificate for",
 )
 @click.pass_context
-def delete_certificate(ctx, key_id):
+def delete_certificate(ctx: click.Context, key_id: str):
     """Delete a certificate for a stored key from the NetHSM.
 
     This command requires authentication as a user with the Administrator
@@ -1030,16 +1065,16 @@ def delete_certificate(ctx, key_id):
 @click.option("--email-address", default="", prompt=True, help="The email address")
 @click.pass_context
 def csr(
-    ctx,
-    api,
-    key_id,
-    country,
-    state_or_province,
-    locality,
-    organization,
-    organizational_unit,
-    common_name,
-    email_address,
+    ctx: click.Context,
+    api: bool,
+    key_id: str,
+    country: str,
+    state_or_province: str,
+    locality: str,
+    organization: str,
+    organizational_unit: str,
+    common_name: str,
+    email_address: str,
 ):
     """Generate a certificate signing request.
 
@@ -1091,7 +1126,7 @@ def csr(
     help="The length of the generated key",
 )
 @click.pass_context
-def generate_tls_key(ctx, type, length):
+def generate_tls_key(ctx: click.Context, type: str, length: int):
     """Generate key pair for NetHSM TLS interface.
 
     This command requires authentication as a user with the Administrator
@@ -1110,7 +1145,7 @@ def generate_tls_key(ctx, type, length):
 
 @nethsm.command()
 @click.pass_context
-def system_info(ctx):
+def system_info(ctx: click.Context):
     """Get system information for a NetHSM instance.
 
     This command requires authentication as a user with the Administrator
@@ -1127,7 +1162,7 @@ def system_info(ctx):
 @nethsm.command()
 @click.argument("filename")
 @click.pass_context
-def backup(ctx, filename):
+def backup(ctx: click.Context, filename: str):
     """Make a backup of a NetHSM instance and write it to a file.
 
     This command requires authentication as a user with the Backup role."""
@@ -1156,7 +1191,12 @@ def backup(ctx, filename):
 )
 @click.argument("filename")
 @click.pass_context
-def restore(ctx, backup_passphrase, system_time, filename):
+def restore(
+    ctx: click.Context,
+    backup_passphrase: str,
+    system_time: datetime.datetime,
+    filename: str,
+):
     """Restore a backup of a NetHSM instance from a file.
 
     If the system time is not set, the current system time is used."""
@@ -1171,7 +1211,7 @@ def restore(ctx, backup_passphrase, system_time, filename):
 @nethsm.command()
 @click.argument("filename")
 @click.pass_context
-def update(ctx, filename):
+def update(ctx: click.Context, filename: str):
     """Load an update to a NetHSM instance.
 
     This command requires authentication as a user with the Administrator
@@ -1187,7 +1227,7 @@ def update(ctx, filename):
 
 @nethsm.command()
 @click.pass_context
-def cancel_update(ctx):
+def cancel_update(ctx: click.Context):
     """Cancel a queued update on a NetHSM instance.
 
     This command requires authentication as a user with the Administrator
@@ -1199,7 +1239,7 @@ def cancel_update(ctx):
 
 @nethsm.command()
 @click.pass_context
-def commit_update(ctx):
+def commit_update(ctx: click.Context):
     """Commit a queued update on a NetHSM instance.
 
     This command requires authentication as a user with the Administrator
@@ -1217,7 +1257,7 @@ def commit_update(ctx):
     help="Force reboot",
 )
 @click.pass_context
-def reboot(ctx, force):
+def reboot(ctx: click.Context, force: bool):
     """Reboot a NetHSM instance.
 
     This command requires authentication as a user with the Administrator
@@ -1241,7 +1281,7 @@ def reboot(ctx, force):
     help="Force shutdown",
 )
 @click.pass_context
-def shutdown(ctx, force):
+def shutdown(ctx: click.Context, force: bool):
     """Shutdown a NetHSM instance.
 
     This command requires authentication as a user with the Administrator
@@ -1265,7 +1305,7 @@ def shutdown(ctx, force):
     help="Force shutdown",
 )
 @click.pass_context
-def factory_reset(ctx, force):
+def factory_reset(ctx: click.Context, force: bool):
     """Perform a factory reset for a NetHSM instance.
 
     This command requires authentication as a user with the Administrator
@@ -1311,7 +1351,7 @@ def factory_reset(ctx, force):
     help="The initialization vector",
 )
 @click.pass_context
-def encrypt(ctx, key_id, data, mode, iv):
+def encrypt(ctx: click.Context, key_id: str, data: str, mode: str, iv: str):
     """Encrypt data with an asymmetric secret key on the NetHSM and print the encrypted message.
 
     This command requires authentication as a user with the Operator role."""
@@ -1350,7 +1390,7 @@ def encrypt(ctx, key_id, data, mode, iv):
     help="The initialization vector",
 )
 @click.pass_context
-def decrypt(ctx, key_id, data, mode, iv):
+def decrypt(ctx: click.Context, key_id: str, data: str, mode: str, iv: str):
     """Decrypt data with a secret key on the NetHSM and print the decrypted message.
 
     This command requires authentication as a user with the Operator role."""
@@ -1379,7 +1419,7 @@ def decrypt(ctx, key_id, data, mode, iv):
     help="The sign mode",
 )
 @click.pass_context
-def sign(ctx, key_id, data, mode):
+def sign(ctx: click.Context, key_id: str, data: str, mode: str):
     """Sign data with a secret key on the NetHSM and print the signature.
 
     This command requires authentication as a user with the Operator role."""
