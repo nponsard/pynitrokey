@@ -22,6 +22,7 @@ from urllib3._collections import HTTPHeaderDict
 
 from pynitrokey.nethsm.client.api_response import ApiResponseWithoutDeserialization
 from pynitrokey.nethsm.client.configurations.api_configuration import ServerInfo
+from pynitrokey.nethsm.client.schemas import Unset
 from pynitrokey.nethsm.client.schemas.original_immutabledict import immutabledict
 from pynitrokey.nethsm.client.schemas.schemas import OUTPUT_BASE_TYPES
 
@@ -939,6 +940,7 @@ class NetHSM:
                 e, state=State.OPERATIONAL, roles=[Role.ADMINISTRATOR]
             )
         return response.body.status
+
     def get_public_key(self):
         try:
             response = self.get_api().config_tls_public_pem_get(
@@ -959,7 +961,7 @@ class NetHSM:
             )
         return response.response.data.decode("utf-8")
 
-    def get_key_certificate(self, key_id:str):
+    def get_key_certificate(self, key_id: str):
         try:
             from .client.paths.keys_key_id_cert.get.path_parameters import (
                 PathParametersDict,
@@ -1001,7 +1003,7 @@ class NetHSM:
                 },
             )
 
-    def set_key_certificate(self, key_id:str, cert: BufferedReader, mime_type: str):
+    def set_key_certificate(self, key_id: str, cert: BufferedReader, mime_type: str):
         try:
             self.request("PUT", f"keys/{key_id}/cert", data=cert, mime_type=mime_type)
         except ApiException as e:
@@ -1017,7 +1019,7 @@ class NetHSM:
                 },
             )
 
-    def delete_key_certificate(self, key_id:str):
+    def delete_key_certificate(self, key_id: str):
         from .client.paths.keys_key_id_cert.delete.path_parameters import (
             PathParametersDict,
         )
@@ -1038,8 +1040,8 @@ class NetHSM:
 
     def csr(
         self,
-        country : Optional[str] = None,
-        state_or_province : Optional[str] = None,
+        country: Optional[str] = None,
+        state_or_province: Optional[str] = None,
         locality: Optional[str] = None,
         organization: Optional[str] = None,
         organizational_unit: Optional[str] = None,
@@ -1067,22 +1069,17 @@ class NetHSM:
 
     def generate_tls_key(
         self,
-        type : KeyTypeLitteral,
-        length: Optional[int] = None,
+        type: Literal["RSA", "Curve25519", "EC_P224", "EC_P256", "EC_P384", "EC_P521"],
+        length: Union[int, Unset] = Unset(),
     ):
         from .client.components.schema.tls_key_generate_request_data import (
             TlsKeyGenerateRequestDataDict,
         )
 
-        if type == "RSA":
-            body = TlsKeyGenerateRequestDataDict(
-                type=type,
-                length=length,
-            )
-        else:
-            body = TlsKeyGenerateRequestDataDict(
-                type=type,
-            )
+        body = TlsKeyGenerateRequestDataDict(
+            type=type,
+            length=length,
+        )
 
         try:
             return self.get_api().config_tls_generate_post(body=body)
@@ -1093,7 +1090,7 @@ class NetHSM:
 
     def key_csr(
         self,
-        key_id: Optional[str] = None,
+        key_id: str,
         country: Optional[str] = None,
         state_or_province: Optional[str] = None,
         locality: Optional[str] = None,
@@ -1131,7 +1128,7 @@ class NetHSM:
                 },
             )
 
-    def set_backup_passphrase(self, passphrase:str):
+    def set_backup_passphrase(self, passphrase: str):
         from .client.components.schema.backup_passphrase_config import (
             BackupPassphraseConfigDict,
         )
@@ -1149,7 +1146,7 @@ class NetHSM:
                 },
             )
 
-    def set_unlock_passphrase(self, passphrase:str):
+    def set_unlock_passphrase(self, passphrase: str):
         from .client.components.schema.unlock_passphrase_config import (
             UnlockPassphraseConfigDict,
         )
@@ -1167,7 +1164,12 @@ class NetHSM:
                 },
             )
 
-    def set_logging_config(self, ip_address:str, port:int, log_level: Literal['debug', 'info', 'warning', 'error']):
+    def set_logging_config(
+        self,
+        ip_address: str,
+        port: int,
+        log_level: Literal["debug", "info", "warning", "error"],
+    ):
         from .client.components.schema.logging_config import LoggingConfigDict
 
         body = LoggingConfigDict(ipAddress=ip_address, port=port, logLevel=log_level)
@@ -1183,7 +1185,7 @@ class NetHSM:
                 },
             )
 
-    def set_network_config(self, ip_address:str, netmask:str, gateway:str):
+    def set_network_config(self, ip_address: str, netmask: str, gateway: str):
         from .client.components.schema.network_config import NetworkConfigDict
 
         body = NetworkConfigDict(ipAddress=ip_address, netmask=netmask, gateway=gateway)
@@ -1199,7 +1201,7 @@ class NetHSM:
                 },
             )
 
-    def set_time(self, time:Union[str,datetime]):
+    def set_time(self, time: Union[str, datetime]):
         from .client.components.schema.time_config import TimeConfigDict
 
         body = TimeConfigDict(time=time)
@@ -1215,7 +1217,7 @@ class NetHSM:
                 },
             )
 
-    def set_unattended_boot(self, status: Literal['on', 'off']):
+    def set_unattended_boot(self, status: Literal["on", "off"]):
         from .client.components.schema.unattended_boot_config import (
             UnattendedBootConfigDict,
         )
@@ -1263,19 +1265,13 @@ class NetHSM:
             )
         return response.response.data
 
-    def restore(self, backup:BufferedReader, passphrase:str, time:Union[str,datetime]):
-        from .client.paths.system_restore.post.query_parameters import (
-            QueryParametersDict,
-        )
+    def restore(self, backup: BufferedReader, passphrase: str, time: datetime):
         try:
-            body = backup.read()
-
-            params = QueryParametersDict({
+            params = {
                 "backupPassphrase": passphrase,
                 "systemTime": time.isoformat(),
-            })
+            }
             self.request("POST", "system/restore", params=params, data=backup)
-            self.get_api().system_restore_post(body=body,query_params=params)
         except ApiException as e:
             _handle_api_exception(
                 e,
@@ -1285,10 +1281,9 @@ class NetHSM:
                 },
             )
 
-    def update(self, image):
+    def update(self, image: BufferedReader):
         try:
             response = self.request("POST", "system/update", data=image)
-            return response.json().get("releaseNotes")
         except ApiException as e:
             _handle_api_exception(
                 e,
@@ -1299,6 +1294,10 @@ class NetHSM:
                     409: "Conflict -- major version downgrade is not allowed",
                 },
             )
+
+        # read releaseNotes
+        json_str = response.data.decode("utf-8")
+        return json.loads(json_str)["releaseNotes"]
 
     def cancel_update(self):
         try:
@@ -1350,7 +1349,7 @@ class NetHSM:
                 roles=[Role.ADMINISTRATOR],
             )
 
-    def encrypt(self, key_id, data, mode, iv):
+    def encrypt(self, key_id: str, data: str, mode: Literal["AES_CBC"], iv: str):
         from .client.components.schema.encrypt_request_data import (
             EncryptRequestDataDict,
         )
@@ -1364,7 +1363,6 @@ class NetHSM:
             response = self.get_api().keys_key_id_encrypt_post(
                 path_params=path_params, body=body
             )
-            return (response.body.encrypted, response.body.iv)
         except ApiException as e:
             _handle_api_exception(
                 e,
@@ -1375,8 +1373,25 @@ class NetHSM:
                     404: f"Key {key_id} not found",
                 },
             )
+        return (response.body.encrypted, response.body.iv)
 
-    def decrypt(self, key_id, data, mode, iv):
+    def decrypt(
+        self,
+        key_id: str,
+        data: str,
+        mode: Literal[
+            "RAW",
+            "PKCS1",
+            "OAEP_MD5",
+            "OAEP_SHA1",
+            "OAEP_SHA224",
+            "OAEP_SHA256",
+            "OAEP_SHA384",
+            "OAEP_SHA512",
+            "AES_CBC",
+        ],
+        iv: str,
+    ):
         from .client.components.schema.decrypt_request_data import (
             DecryptRequestDataDict,
         )
@@ -1394,7 +1409,6 @@ class NetHSM:
             response = self.get_api().keys_key_id_decrypt_post(
                 path_params=path_params, body=body
             )
-            return response.body.decrypted
         except ApiException as e:
             _handle_api_exception(
                 e,
@@ -1405,8 +1419,24 @@ class NetHSM:
                     404: f"Key {key_id} not found",
                 },
             )
+        return response.body.decrypted
 
-    def sign(self, key_id, data, mode):
+    def sign(
+        self,
+        key_id: str,
+        data: str,
+        mode: Literal[
+            "PKCS1",
+            "PSS_MD5",
+            "PSS_SHA1",
+            "PSS_SHA224",
+            "PSS_SHA256",
+            "PSS_SHA384",
+            "PSS_SHA512",
+            "EdDSA",
+            "ECDSA",
+        ],
+    ):
         from .client.components.schema.sign_request_data import SignRequestDataDict
         from .client.paths.keys_key_id_sign.post.path_parameters import (
             PathParametersDict,
@@ -1418,7 +1448,6 @@ class NetHSM:
             response = self.get_api().keys_key_id_sign_post(
                 path_params=path_params, body=body
             )
-            return response.body.signature
         except ApiException as e:
             _handle_api_exception(
                 e,
@@ -1429,6 +1458,7 @@ class NetHSM:
                     404: f"Key {key_id} not found",
                 },
             )
+        return response.body.signature
 
 
 @contextlib.contextmanager
