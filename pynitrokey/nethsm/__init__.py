@@ -30,7 +30,7 @@ class Role(enum.Enum):
         return Role.from_string(model_role.value)
 
     @staticmethod
-    def from_string(s):
+    def from_string(s: str):
         for role in Role:
             if role.value == s:
                 return role
